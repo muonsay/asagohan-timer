@@ -28,11 +28,11 @@
     -webkit-user-select:none;user-select:none;overflow:hidden}
   body.done{animation:flash 1.2s ease-in-out 3}
   @keyframes flash{50%{background:var(--flash)}}
-  .app{height:100%;display:flex;align-items:center;justify-content:center;gap:4vmin;padding:3vmin}
+  .app{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;gap:4vmin;padding:3vmin;transform-origin:top center}
   @media (orientation:portrait){.app{flex-direction:column}}
 
   .dialwrap{position:relative;width:min(82vmin,640px);aspect-ratio:1}
-  @media (orientation:portrait){.dialwrap{width:min(86vw,40vh)}.app{gap:3vmin}}
+  @media (orientation:portrait){.dialwrap{width:min(84vw,36vh);width:min(84vw,36svh)}.app{gap:2vh;gap:2svh;padding:2svh 3vw}}
   svg{width:100%;height:100%;display:block;touch-action:none}
   .face{fill:var(--card);stroke:var(--line);stroke-width:6}
   .tick{stroke:var(--tick);stroke-width:2;stroke-linecap:round}
@@ -57,7 +57,12 @@
   button.sel{background:var(--ink);color:var(--card)}
   .adj button{flex:1}
   .main{display:flex;gap:1.6vmin;width:100%}
-  @media (orientation:portrait){.panel{width:min(86vw,560px);gap:1.4vh} .target{font-size:min(3.6vh,40px)} .time{font-size:min(9vh,110px)} button{font-size:min(2.4vh,22px)} .main button{font-size:min(3.4vh,34px);padding:1.8vh 0}}
+  @media (orientation:portrait){.panel{width:min(86vw,560px);gap:1.2vh;gap:1.2svh} .target{font-size:min(3.2vh,40px);font-size:min(3.2svh,40px)}
+    .time{font-size:min(7.5vh,110px);font-size:min(7.5svh,110px)} .msg{font-size:min(2.6svh,30px)}
+    button{font-size:min(2.2vh,22px);font-size:min(2.2svh,22px);padding:1.1vh 0;padding:1.1svh 0}
+    .presets,.adj{gap:1svh 2vw} .modes button{padding:1svh 0}
+    .main button{font-size:min(3vh,34px);font-size:min(3svh,34px);padding:1.5vh 0;padding:1.5svh 0}
+    .tools button{font-size:min(1.8svh,18px);padding:.8svh 3vw} .hint{font-size:1.5svh;bottom:-2.4svh}}
   .main button{flex:1;padding:2.4vmin 0;font-size:min(4.6vmin,34px)}
   #startBtn{background:var(--accent);color:var(--accentInk);flex:2}
   #startBtn.pause{background:var(--pause);color:#fff}
@@ -489,6 +494,18 @@
   if (mode === 'clock') previewClock();
   buildPresets();
   applySkin(skinKey);
+
+  // ---- 画面に収まるように縮める（ブラウザのバーで高さが足りないとき） ----
+  const appEl = $('app');
+  function fit() {
+    appEl.style.transform = '';
+    const h = appEl.offsetHeight, H = window.innerHeight;
+    if (h > H + 1) appEl.style.transform = `scale(${H / h})`;
+  }
+  ['resize', 'orientationchange'].forEach(t => addEventListener(t, fit));
+  if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+  try { document.fonts.ready.then(fit); } catch (e) {}
+  fit();
 })();
 </script>
 <script>
