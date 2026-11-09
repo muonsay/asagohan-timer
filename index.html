@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>あさごはんタイマー</title>
+<meta name="description" content="子どもが時間どおりに朝ごはんを食べきれる、見てわかるカウントダウンタイマー">
+<meta name="theme-color" content="#FFF7EA">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="あさごはん">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF7EA; --ink:#4A3B2C; --sub:#9A8774; --card:#FFFFFF;
+    --btn:#F3E6D3; --line:#EADBC6; --num:#7A6652; --tick:#C9B8A3; --flash:#FFE9B8;
+    --accent:#36B37E; --accentInk:#fff; --pause:#FF8A2B;
+    --wedge:#36B37E; --timecol:#36B37E;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+    -webkit-user-select:none;user-select:none;overflow:hidden}
+  body.done{animation:flash 1.2s ease-in-out 3}
+  @keyframes flash{50%{background:var(--flash)}}
+  .app{height:100%;display:flex;align-items:center;justify-content:center;gap:4vmin;padding:3vmin}
+  @media (orientation:portrait){.app{flex-direction:column}}
+
+  .dialwrap{position:relative;width:min(82vmin,640px);aspect-ratio:1}
+  @media (orientation:portrait){.dialwrap{width:min(86vw,40vh)}.app{gap:3vmin}}
+  svg{width:100%;height:100%;display:block;touch-action:none}
+  .face{fill:var(--card);stroke:var(--line);stroke-width:6}
+  .tick{stroke:var(--tick);stroke-width:2;stroke-linecap:round}
+  .tick.major{stroke:var(--num);stroke-width:4}
+  .num{font-size:24px;font-weight:800;fill:var(--num);text-anchor:middle;dominant-baseline:central}
+  #wedge{fill:var(--wedge);transition:fill .6s}
+  #ghost{fill:var(--wedge);opacity:.14;transition:fill .6s}
+  .hub{fill:var(--card);stroke:var(--line);stroke-width:4}
+  .emoji{font-size:44px;text-anchor:middle;dominant-baseline:central}
+  .hint{position:absolute;left:0;right:0;bottom:-3.2vmin;text-align:center;font-size:2.2vmin;color:var(--sub)}
+
+  .panel{display:flex;flex-direction:column;align-items:center;gap:2.2vmin;min-width:min(42vmin,360px)}
+  .time{font-size:min(13vmin,110px);font-weight:800;letter-spacing:.02em;line-height:1;
+    font-variant-numeric:tabular-nums;color:var(--timecol);transition:color .6s}
+  .msg{font-size:min(4.2vmin,30px);font-weight:800;text-align:center;min-height:1.4em}
+  .presets{display:grid;grid-template-columns:repeat(4,1fr);gap:1.4vmin;width:100%}
+  .adj{display:flex;gap:1.4vmin;width:100%}
+  button{font:inherit;font-weight:800;border:none;border-radius:999px;cursor:pointer;color:var(--ink);
+    background:var(--btn);padding:1.6vmin 0;white-space:nowrap;font-size:min(3.2vmin,22px);transition:transform .08s}
+  html,body{transition:background .4s}
+  button:active{transform:scale(.94)}
+  button.sel{background:var(--ink);color:var(--card)}
+  .adj button{flex:1}
+  .main{display:flex;gap:1.6vmin;width:100%}
+  @media (orientation:portrait){.panel{width:min(86vw,560px);gap:1.4vh} .target{font-size:min(3.6vh,40px)} .time{font-size:min(9vh,110px)} button{font-size:min(2.4vh,22px)} .main button{font-size:min(3.4vh,34px);padding:1.8vh 0}}
+  .main button{flex:1;padding:2.4vmin 0;font-size:min(4.6vmin,34px)}
+  #startBtn{background:var(--accent);color:var(--accentInk);flex:2}
+  #startBtn.pause{background:var(--pause);color:#fff}
+  .tools{display:flex;gap:1.4vmin}
+  .tools button{background:transparent;border:2px solid var(--line);font-size:min(2.6vmin,18px);padding:1vmin 2.4vmin;color:var(--sub)}
+  .modes{display:flex;gap:0;background:var(--btn);border-radius:999px;padding:.6vmin;width:100%}
+  .modes button{flex:1;background:transparent;padding:1.2vmin 0}
+  .modes button.sel{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .target{font-size:min(5.4vmin,40px);font-weight:800;min-height:1.2em}
+  .target b{font-size:1.25em}
+  button:disabled{opacity:.35}
+  .setonly{transition:opacity .3s}
+  .running .setonly{opacity:.25;pointer-events:none}
+  .app{position:relative;z-index:1}
+  #deco{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+  #deco span{position:absolute;opacity:.32;line-height:1}
+  #settings{position:fixed;inset:0;z-index:5;background:rgba(40,25,40,.45);display:none;align-items:center;justify-content:center;padding:3vmin}
+  #settings.open{display:flex}
+  .sheet{background:var(--card);color:var(--ink);border-radius:28px;padding:3vmin 3vmin 2.4vmin;width:min(94vw,860px);max-height:94vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  .sheet h2{margin:0 0 .4em;text-align:center;font-size:min(5vmin,34px)}
+  .sheet p{margin:0 0 2vmin;text-align:center;color:var(--sub);font-size:min(2.6vmin,17px)}
+  .skins{display:grid;grid-template-columns:repeat(4,1fr);gap:2vmin}
+  @media (orientation:portrait){.skins{grid-template-columns:repeat(2,1fr)}}
+  .skin{border-radius:22px;padding:1.6vmin 1vmin 1.4vmin;display:flex;flex-direction:column;align-items:center;gap:1vmin;
+    border:4px solid transparent;font-size:min(2.8vmin,19px);white-space:normal}
+  .skin.sel{border-color:var(--ink)}
+  .skin svg{width:70%;height:auto}
+  .sheet .close{display:block;margin:2.4vmin auto 0;padding:1.6vmin 8vmin;background:var(--btn);color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="deco"></div>
+<div class="app" id="app">
+  <div class="dialwrap">
+    <svg id="dial" viewBox="0 0 440 440" aria-label="のこり時間">
+      <defs>
+        <linearGradient id="rainbow" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FF9ECF"/><stop offset=".35" stop-color="#C9A7FF"/>
+          <stop offset=".7" stop-color="#8FD8FF"/><stop offset="1" stop-color="#9EF0C8"/>
+        </linearGradient>
+      </defs>
+      <circle class="face" cx="220" cy="220" r="214"/>
+      <g id="ticks"></g>
+      <path id="ghost"/>
+      <path id="wedge"/>
+      <circle class="hub" cx="220" cy="220" r="40"/>
+      <text class="emoji" id="face" x="220" y="222">🍙</text>
+    </svg>
+    <div class="hint" id="hint">まるい時計をなぞっても 時間を決められます</div>
+  </div>
+
+  <div class="panel">
+    <div class="modes setonly">
+      <button data-mode="clock">⏰ 時刻で決める</button>
+      <button data-mode="min">⏳ 分で決める</button>
+    </div>
+    <div class="target" id="target"></div>
+    <div class="time" id="time">20:00</div>
+    <div class="msg" id="msg">&nbsp;</div>
+
+    <div class="presets setonly" id="presets"></div>
+    <div class="adj setonly">
+      <button data-adj="-5">−5分</button>
+      <button data-adj="-1">−1分</button>
+      <button data-adj="1">＋1分</button>
+      <button data-adj="5">＋5分</button>
+    </div>
+
+    <div class="main">
+      <button id="resetBtn">リセット</button>
+      <button id="startBtn">スタート</button>
+    </div>
+
+    <div class="tools">
+      <button id="soundBtn">🔔 音あり</button>
+      <button id="testBtn">音をためす</button>
+      <button id="skinBtn">🎨 きせかえ</button>
+      <button id="fullBtn">⛶ 全画面</button>
+    </div>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="sheet">
+    <h2>🎨 きせかえ</h2>
+    <p>すきな デザインを えらんでね</p>
+    <div class="skins" id="skins"></div>
+    <button class="close" id="closeSkin">とじる</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const C = 220, R = 150, MAX = 60;
+  const $ = id => document.getElementById(id);
+  // ---- きせかえ（スキン） ----
+  const SKINS = {
+    basic:  { name:'いつもの', icon:'🍙',
+      vars:{bg:'#FFF7EA',card:'#FFFFFF',ink:'#4A3B2C',sub:'#9A8774',btn:'#F3E6D3',line:'#EADBC6',num:'#7A6652',tick:'#C9B8A3',flash:'#FFE9B8',accent:'#36B37E',accentInk:'#fff',pause:'#FF8A2B'},
+      wedge:['#36B37E','#FF8A2B','#EF4E4E'], time:'#36B37E',
+      faces:{idle:'🍙',run:'😋',five:'🏃',one:'😮',done:'🎉'}, deco:[] },
+    yumekawa:{ name:'ゆめかわ', icon:'🦄',
+      vars:{bg:'#FCEFFF',card:'#FFFFFF',ink:'#6A3D74',sub:'#B08AB8',btn:'#F6DDF7',line:'#EBC8F0',num:'#9A5FA8',tick:'#DDB8E4',flash:'#FFD6F2',accent:'#C98BFF',accentInk:'#fff',pause:'#FFB347'},
+      wedge:['url(#rainbow)','#FFB347','#FF6B9A'], time:'#B46BD6',
+      faces:{idle:'🦄',run:'🦄',five:'🌈',one:'⏰',done:'👑'}, deco:['⭐','💖','🌈','☁️','✨','🦄'] },
+    usagi:  { name:'うさぎ', icon:'🐰',
+      vars:{bg:'#FFF0F3',card:'#FFFFFF',ink:'#6B3B47',sub:'#C08A97',btn:'#FFDCE4',line:'#F7C6D2',num:'#C0607A',tick:'#F0B5C4',flash:'#FFD3DE',accent:'#FF8FB1',accentInk:'#fff',pause:'#FFB347'},
+      wedge:['#FF8FB1','#FFB347','#FF5C7A'], time:'#F06A93',
+      faces:{idle:'🐰',run:'🐰',five:'🐇',one:'🥕',done:'💐'}, deco:['🎀','🌷','💗','🥕','🐰'] },
+    sweets: { name:'スイーツ', icon:'🧁',
+      vars:{bg:'#FFF6E9',card:'#FFFFFF',ink:'#6B4430',sub:'#B8957F',btn:'#FBE3CF',line:'#F2D3B8',num:'#B07454',tick:'#E8C4A6',flash:'#FFE0E6',accent:'#5CC8B5',accentInk:'#fff',pause:'#FFB347'},
+      wedge:['#7FD1C2','#FFB347','#F2707E'], time:'#3FB3A0',
+      faces:{idle:'🧁',run:'🍓',five:'🍩',one:'🍬',done:'🎂'}, deco:['🍓','🍪','🧁','🍬','🍭','🍰'] },
+    hana:   { name:'おはな', icon:'🌸',
+      vars:{bg:'#F4FAEE',card:'#FFFFFF',ink:'#3F5A3A',sub:'#8DA683',btn:'#E2F0D6',line:'#CFE3C0',num:'#6E9460',tick:'#BFD8AE',flash:'#FFE3EF',accent:'#F27DAE',accentInk:'#fff',pause:'#FFB800'},
+      wedge:['#F59AC0','#FFC845','#FF7A59'], time:'#E9679E',
+      faces:{idle:'🌱',run:'🌷',five:'🌼',one:'🐝',done:'💐'}, deco:['🌸','🌼','🦋','🌷','🍀'] },
+    umi:    { name:'うみ', icon:'🐬',
+      vars:{bg:'#EAF7FB',card:'#FFFFFF',ink:'#1F4E66',sub:'#7FA9BC',btn:'#D3ECF5',line:'#BFE2EF',num:'#3F8FB0',tick:'#A9D4E6',flash:'#CFF3FF',accent:'#2FB3CE',accentInk:'#fff',pause:'#FFB347'},
+      wedge:['#3FC1D9','#FFB347','#FF6F7D'], time:'#1FA7C2',
+      faces:{idle:'🐚',run:'🐬',five:'🐠',one:'🐙',done:'🧜‍♀️'}, deco:['🫧','🐟','⭐','🐚','🐳'] },
+    yozora: { name:'よぞら', icon:'🌙',
+      vars:{bg:'#1F2347',card:'#2B3160',ink:'#F5F1FF',sub:'#B5B0D8',btn:'#3A4078',line:'#4A5190',num:'#D9D3FF',tick:'#6B72B0',flash:'#3C3A7A',accent:'#FFD54A',accentInk:'#2B2450',pause:'#FF9F43'},
+      wedge:['#FFD54A','#FF9F43','#FF6B8B'], time:'#FFD54A',
+      faces:{idle:'🌙',run:'⭐',five:'🌟',one:'💫',done:'🌈'}, deco:['✨','⭐','🌙','💫'] },
+  };
+  let skinKey = 'basic';
+
+  let mode = 'clock';          // clock = 時刻で / min = 分で
+  let targetMin = 7 * 60;      // 7:00
+  let totalSec = 20 * 60;      // 分モードの設定、または開始時の残り
+  let setSec = 20 * 60;        // 分モードで選んだ長さ
+  let remaining = setSec;
+  let endAt = 0;
+  let status = 'idle';         // idle | running | paused | done
+  let fiveFired = false;
+  let soundOn = true;
+
+  const store = (k, v) => { try { localStorage.setItem('asagohan-' + k, v); } catch (e) {} };
+  const load = k => { try { return localStorage.getItem('asagohan-' + k); } catch (e) { return null; } };
+  {
+    const t = parseInt(load('target'), 10); if (t >= 0 && t < 1440) targetMin = t;
+    if (load('mode') === 'min') mode = 'min';
+    if (load('sound') === 'off') soundOn = false;
+    if (SKINS[load('skin')]) skinKey = load('skin');
+  }
+
+  const hm = m => Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
+  const fmtClock = ms => { const d = new Date(ms); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+  // 次に来る「目標時刻」(過ぎていたら翌日)
+  function targetTs() {
+    const d = new Date(); d.setHours(Math.floor(targetMin / 60), targetMin % 60, 0, 0);
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    return d.getTime();
+  }
+
+  // ---- dial face ----
+  const ticks = $('ticks'), ns = 'http://www.w3.org/2000/svg';
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * Math.PI * 2, major = i % 5 === 0;
+    const r1 = major ? 156 : 162, r2 = 174;
+    const l = document.createElementNS(ns, 'line');
+    l.setAttribute('x1', C + r1 * Math.sin(a)); l.setAttribute('y1', C - r1 * Math.cos(a));
+    l.setAttribute('x2', C + r2 * Math.sin(a)); l.setAttribute('y2', C - r2 * Math.cos(a));
+    l.setAttribute('class', 'tick' + (major ? ' major' : ''));
+    ticks.appendChild(l);
+    if (major) {
+      const t = document.createElementNS(ns, 'text');
+      t.setAttribute('x', C + 194 * Math.sin(a)); t.setAttribute('y', C - 194 * Math.cos(a));
+      t.setAttribute('class', 'num'); t.textContent = i;
+      ticks.appendChild(t);
+    }
+  }
+  function wedgePath(sec) {
+    const frac = Math.max(0, Math.min(1, sec / (MAX * 60)));
+    if (frac <= 0) return '';
+    if (frac >= 0.9999) return `M${C},${C - R} A${R},${R} 0 1 1 ${C - 0.01},${C - R} Z`;
+    const a = frac * Math.PI * 2;
+    const x = C + R * Math.sin(a), y = C - R * Math.cos(a);
+    return `M${C},${C} L${C},${C - R} A${R},${R} 0 ${a > Math.PI ? 1 : 0} 1 ${x},${y} Z`;
+  }
+
+  // ---- mode / presets ----
+  const presetBox = $('presets');
+  function buildPresets() {
+    presetBox.innerHTML = '';
+    const list = mode === 'clock'
+      ? [6*60+50, 7*60, 7*60+5, 7*60+10, 7*60+15, 7*60+20, 7*60+30, 7*60+45].map(v => [v, hm(v)])
+      : [10, 15, 20, 25, 30, 40, 45, 60].map(v => [v, v + '分']);
+    list.forEach(([v, label]) => {
+      const b = document.createElement('button');
+      b.textContent = label; b.dataset.v = v;
+      b.onclick = () => mode === 'clock' ? setTarget(v) : setMinutes(v);
+      presetBox.appendChild(b);
+    });
+  }
+  document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    if (status === 'running') return;
+    mode = b.dataset.mode; store('mode', mode);
+    resetState(); buildPresets(); render();
+  });
+  document.querySelectorAll('[data-adj]').forEach(b => b.onclick = () => {
+    const d = parseInt(b.dataset.adj, 10);
+    if (mode === 'clock') setTarget((targetMin + d + 1440) % 1440);
+    else setMinutes(Math.round(setSec / 60) + d);
+  });
+
+  function setTarget(v) {
+    if (status === 'running') return;
+    targetMin = v; store('target', v); resetState(); render();
+  }
+  function setMinutes(m) {
+    if (status === 'running') return;
+    m = Math.max(1, Math.min(MAX, m));
+    setSec = m * 60; store('min', m); resetState(); render();
+  }
+  function resetState() {
+    status = 'idle'; fiveFired = false; document.body.classList.remove('done');
+    totalSec = setSec; remaining = setSec;
+    if (mode === 'clock') previewClock();
+  }
+  function previewClock() { remaining = (targetTs() - Date.now()) / 1000; totalSec = remaining; }
+
+  // ---- drag on dial (分モードのみ) ----
+  const dial = $('dial');
+  let dragging = false, lastMin = 0;
+  function minFromEvent(e) {
+    const r = dial.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 440 - C;
+    const y = (e.clientY - r.top) / r.height * 440 - C;
+    let a = Math.atan2(x, -y); if (a < 0) a += Math.PI * 2;
+    let m = Math.round(a / (Math.PI * 2) * 60);
+    if (m === 0) m = lastMin > 30 ? 60 : 1;
+    if (lastMin >= 50 && m <= 10) m = 60;
+    if (lastMin <= 10 && lastMin > 0 && m >= 50) m = 1;
+    return m;
+  }
+  dial.addEventListener('pointerdown', e => {
+    if (status === 'running' || mode !== 'min') return;
+    dragging = true; lastMin = Math.round(setSec / 60);
+    dial.setPointerCapture(e.pointerId);
+    lastMin = minFromEvent(e); setMinutes(lastMin);
+  });
+  dial.addEventListener('pointermove', e => { if (dragging) { lastMin = minFromEvent(e); setMinutes(lastMin); } });
+  ['pointerup', 'pointercancel'].forEach(t => dial.addEventListener(t, () => dragging = false));
+
+  // ---- sound ----
+  let ctx = null;
+  function audio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try {
+      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+  function tone(freq, at, dur, type = 'sine', vol = 0.35) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + at;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  function chimeFive() {
+    if (!soundOn) return;
+    for (let k = 0; k < 2; k++) { tone(1318.5, k * 1.6, 0.9); tone(1046.5, k * 1.6 + 0.45, 1.2); }
+  }
+  function chimeEnd() {
+    if (!soundOn) return;
+    const notes = [523.3, 659.3, 784, 1046.5];
+    for (let k = 0; k < 3; k++) notes.forEach((f, i) => tone(f, k * 1.8 + i * 0.16, i === 3 ? 1.0 : 0.35, 'triangle', 0.4));
+  }
+  document.addEventListener('pointerdown', audio, { once: true });
+  $('soundBtn').onclick = () => { soundOn = !soundOn; store('sound', soundOn ? 'on' : 'off'); render(); };
+  $('testBtn').onclick = () => { audio(); const s = soundOn; soundOn = true; chimeFive(); soundOn = s; };
+
+  // ---- keep screen on ----
+  let wakeLock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => wakeLock = null); } } catch (e) {}
+  }
+  function releaseAwake() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && status === 'running') keepAwake();
+  });
+
+  // ---- fullscreen ----
+  $('fullBtn').onclick = () => {
+    try {
+      const d = document, el = d.documentElement;
+      if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+      else (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+    } catch (e) {}
+  };
+
+  // ---- run ----
+  $('startBtn').onclick = () => {
+    audio();
+    if (mode === 'clock' && status === 'done') { resetState(); render(); return; }
+    if (status === 'running') {
+      remaining = Math.max(0, (endAt - Date.now()) / 1000);
+      status = 'paused'; releaseAwake();
+    } else {
+      if (mode === 'clock') {
+        const t = targetTs();
+        if (status !== 'paused') {
+          if (t - Date.now() > MAX * 60000) return; // 60分より前は開始しない
+          totalSec = (t - Date.now()) / 1000; fiveFired = totalSec <= 300;
+        }
+        endAt = t; // 一時停止しても終わる時刻は変わらない
+      } else {
+        if (status === 'done' || remaining <= 0) { remaining = setSec; totalSec = setSec; fiveFired = false; }
+        if (status === 'idle') { totalSec = setSec; fiveFired = remaining <= 300; }
+        endAt = Date.now() + remaining * 1000;
+      }
+      document.body.classList.remove('done');
+      status = 'running'; keepAwake();
+    }
+    render();
+  };
+  $('resetBtn').onclick = () => { releaseAwake(); resetState(); render(); };
+
+  function step() {
+    if (status === 'running') {
+      remaining = Math.max(0, (endAt - Date.now()) / 1000);
+      if (!fiveFired && remaining <= 300) { fiveFired = true; chimeFive(); }
+      if (remaining <= 0) {
+        status = 'done'; releaseAwake();
+        document.body.classList.add('done'); chimeEnd();
+      }
+      render();
+    } else if (status === 'idle' && mode === 'clock') {
+      previewClock(); render();
+    }
+  }
+  setInterval(step, 200);
+
+  function render() {
+    const tooEarly = mode === 'clock' && status === 'idle' && remaining > MAX * 60;
+    const shown = Math.ceil(Math.max(0, remaining));
+    const mm = Math.floor(shown / 60), ss = shown % 60;
+    $('time').textContent = tooEarly ? '--:--' : mm + ':' + String(ss).padStart(2, '0');
+
+    const sk = SKINS[skinKey];
+    let phase = 'idle', w = 0;
+    if (status === 'done') { phase = 'done'; w = 2; }
+    else if (status !== 'idle' && remaining <= 60) { phase = 'one'; w = 2; }
+    else if (status !== 'idle' && remaining <= 300) { phase = 'five'; w = 1; }
+    else if (status === 'running') phase = 'run';
+    const rs = document.documentElement.style;
+    rs.setProperty('--wedge', sk.wedge[w]);
+    rs.setProperty('--timecol', w === 0 ? sk.time : sk.wedge[w]);
+    $('face').textContent = sk.faces[phase];
+
+    $('wedge').setAttribute('d', status === 'done' || tooEarly ? '' : wedgePath(remaining));
+    $('ghost').setAttribute('d', status === 'idle' ? '' : wedgePath(totalSec));
+
+    $('target').innerHTML = mode === 'clock'
+      ? `<b>${hm(targetMin)}</b> までに たべよう`
+      : `<b>${Math.round(setSec / 60)}分</b> で たべよう`;
+
+    let msg = ' ';
+    if (tooEarly) msg = hm((targetMin + 1440 - 60) % 1440) + ' から スタートできます';
+    else if (status === 'running') msg = remaining <= 300 ? 'あと すこし！' : (mode === 'min' ? fmtClock(endAt) + ' に おわるよ' : 'がんばれ！');
+    else if (status === 'paused') msg = 'ちょっと おやすみ中';
+    else if (status === 'done') msg = 'じかん だよ！ よく がんばったね';
+    $('msg').textContent = msg;
+
+    const sb = $('startBtn');
+    sb.textContent = status === 'running' ? 'ストップ' : status === 'paused' ? 'つづける' : status === 'done' ? 'もう一度' : 'スタート';
+    sb.classList.toggle('pause', status === 'running');
+    sb.disabled = tooEarly;
+    $('app').classList.toggle('running', status === 'running');
+    $('hint').style.visibility = status === 'idle' && mode === 'min' ? 'visible' : 'hidden';
+
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('sel', b.dataset.mode === mode));
+    const cur = mode === 'clock' ? targetMin : setSec / 60;
+    presetBox.querySelectorAll('button').forEach(b => b.classList.toggle('sel', +b.dataset.v === cur));
+    document.querySelectorAll('[data-adj]').forEach(b => b.textContent = (+b.dataset.adj > 0 ? '＋' : '−') + Math.abs(b.dataset.adj) + '分');
+    $('soundBtn').textContent = soundOn ? '🔔 音あり' : '🔕 音なし';
+  }
+
+  // ---- きせかえ画面 ----
+  function applySkin(key) {
+    skinKey = key; store('skin', key);
+    const sk = SKINS[key], rs = document.documentElement.style;
+    Object.entries(sk.vars).forEach(([k, v]) => rs.setProperty('--' + k, v));
+    const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = sk.vars.bg;
+    // 背景のかざり（毎回同じ位置）
+    const deco = $('deco'); deco.innerHTML = '';
+    if (sk.deco.length) {
+      let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+      for (let i = 0; i < 26; i++) {
+        const sp = document.createElement('span');
+        sp.textContent = sk.deco[i % sk.deco.length];
+        sp.style.left = (rnd() * 96) + 'vw'; sp.style.top = (rnd() * 94) + 'vh';
+        sp.style.fontSize = (3 + rnd() * 4) + 'vmin';
+        sp.style.transform = `rotate(${(rnd() - .5) * 40}deg)`;
+        deco.appendChild(sp);
+      }
+    }
+    document.querySelectorAll('.skin').forEach(b => b.classList.toggle('sel', b.dataset.skin === key));
+    render();
+  }
+  const skinsBox = $('skins');
+  Object.entries(SKINS).forEach(([key, sk]) => {
+    const b = document.createElement('button');
+    b.className = 'skin'; b.dataset.skin = key;
+    b.style.background = sk.vars.bg; b.style.color = sk.vars.ink;
+    const fill = sk.wedge[0];
+    b.innerHTML = `<svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="${sk.vars.card}" stroke="${sk.vars.line}" stroke-width="4"/>
+        <path d="M50,50 L50,14 A36,36 0 0 1 81.2,68 Z" fill="${fill}"/>
+        <circle cx="50" cy="50" r="13" fill="${sk.vars.card}" stroke="${sk.vars.line}" stroke-width="2"/>
+        <text x="50" y="52" font-size="16" text-anchor="middle" dominant-baseline="central">${sk.icon}</text>
+      </svg><span>${sk.name}</span>`;
+    b.onclick = () => applySkin(key);
+    skinsBox.appendChild(b);
+  });
+  $('skinBtn').onclick = () => $('settings').classList.add('open');
+  $('closeSkin').onclick = () => $('settings').classList.remove('open');
+  $('settings').addEventListener('click', e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); });
+
+  if (mode === 'clock') previewClock();
+  buildPresets();
+  applySkin(skinKey);
+})();
+</script>
+<script>
+  // ホーム画面から開いたときは「全画面」ボタンは不要
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    const fb = document.getElementById('fullBtn'); if (fb) fb.style.display = 'none';
+  }
+  // オフライン対応
+  if ('serviceWorker' in navigator) {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+</script>
+</body>
+</html>
