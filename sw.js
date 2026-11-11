@@ -1,6 +1,6 @@
 // オフラインでも開けるようにするための Service Worker
 // アプリを更新したら VERSION を上げてください
-const VERSION = 'v2';
+const VERSION = 'v3';
 const CACHE = 'asagohan-' + VERSION;
 const FILES = [
   './',
