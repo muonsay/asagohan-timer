@@ -73,6 +73,8 @@
   body.focus .dialwrap{width:min(90vw,72vh);width:min(90vw,72svh)}
   body.focus .panel{min-width:0;width:min(90vw,72vh);width:min(90vw,72svh)} /* 時計と同じ幅 */
   body.focus .main button{font-size:min(4.2vh,36px);font-size:min(4.2svh,36px);padding:2vh 0;padding:2svh 0}
+  #unfocusBtn{display:none;background:transparent;border:2px solid var(--line);color:var(--sub);font-size:min(2.4vh,18px);font-size:min(2.4svh,18px);padding:1vh 0;padding:1svh 0}
+  body.focus #unfocusBtn{display:block;width:100%}
   body.focus .panel > :not(.main), body.focus #resetBtn, body.focus .hint, body.focus #deco{display:none}
   .tools button{background:transparent;border:2px solid var(--line);font-size:min(2.6vmin,18px);padding:1vmin 2.4vmin;color:var(--sub)}
   .modes{display:flex;gap:0;background:var(--btn);border-radius:999px;padding:.6vmin;width:100%}
@@ -143,6 +145,7 @@
       <button id="startBtn">スタート</button>
     </div>
 
+    <button id="unfocusBtn">↩ いつもの表示にもどす</button>
     <div class="tools">
       <button id="soundBtn">🔔 音あり</button>
       <button id="simpleBtn">👀 シンプル表示：オフ</button>
@@ -198,7 +201,7 @@
       faces:{idle:'🌙',run:'⭐',five:'🌟',one:'💫',done:'🌈'}, deco:['✨','⭐','🌙','💫'] },
   };
   let skinKey = 'basic';
-  let simpleOn = false, wasFocus = false;
+  let simpleOn = false, wasFocus = false, peek = false; // peek = 動作中だけ一時的にいつもの表示
 
   let mode = 'clock';          // clock = 時刻で / min = 分で
   let targetMin = 7 * 60;      // 7:00
@@ -449,9 +452,10 @@
     const sb = $('startBtn');
     sb.textContent = status === 'running' ? 'ストップ' : status === 'paused' ? 'つづける' : status === 'done' ? 'もう一度' : 'スタート';
     sb.classList.toggle('pause', status === 'running');
-    const focus = simpleOn && status === 'running';
+    if (status !== 'running') peek = false;
+    const focus = simpleOn && status === 'running' && !peek;
     if (focus !== wasFocus) { wasFocus = focus; document.body.classList.toggle('focus', focus); fit(); }
-    const smb = $('simpleBtn'); smb.textContent = '👀 シンプル表示：' + (simpleOn ? 'オン' : 'オフ'); smb.classList.toggle('on', simpleOn);
+    const smb = $('simpleBtn'); smb.textContent = peek ? '👀 シンプル表示にもどす' : '👀 シンプル表示：' + (simpleOn ? 'オン' : 'オフ'); smb.classList.toggle('on', simpleOn);
     sb.disabled = tooEarly;
     $('app').classList.toggle('running', status === 'running');
     $('hint').style.visibility = status === 'idle' && mode === 'min' ? 'visible' : 'hidden';
@@ -509,7 +513,11 @@
   applySkin(skinKey);
 
   // ---- 画面に収まるように縮める（ブラウザのバーで高さが足りないとき） ----
-  $('simpleBtn').onclick = () => { simpleOn = !simpleOn; store('simple', simpleOn ? 'on' : 'off'); render(); };
+  $('simpleBtn').onclick = () => {
+    if (peek) { peek = false; render(); return; }   // 一時解除中なら、シンプル表示に戻すだけ
+    simpleOn = !simpleOn; store('simple', simpleOn ? 'on' : 'off'); render();
+  };
+  $('unfocusBtn').onclick = () => { peek = true; render(); };
   function fit() {
     const appEl = document.getElementById('app');
     appEl.style.transform = '';
